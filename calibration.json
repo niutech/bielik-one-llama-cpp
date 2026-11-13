@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "method": "temperature_scaling",
+  "formula": {
+    "choice/binary/score": "softmax(logits / T)",
+    "labels": "sigmoid(logits / T), per option"
+  },
+  "temperatures": {
+    "choice": 2.106722071909671,
+    "binary": 1.8986842419010377,
+    "score": 2.732080513508791,
+    "labels": 1.0
+  },
+  "labels_threshold": 0.5,
+  "valid_for": {
+    "precision": "bfloat16",
+    "prompt": "standard; no read_twice; no questions_before_state",
+    "option_orders": 1,
+    "max_context": 32768
+  },
+  "not_valid_for": ["FP8 or other quantized serving without a separate check"]
+}
