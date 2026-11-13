@@ -12,6 +12,7 @@ import numpy as np
 
 from .calibration import load_temperatures, sigmoid, softmax
 from .config import DECISION_TOKEN_COUNT
+from .model_profiles import resolve_auto_calibration
 from .prompts import as_text, render_decision_prompt_parts
 
 
@@ -50,6 +51,16 @@ class DecisionEngine:
         limits: DecisionOptions | None = None,
     ) -> None:
         self.backend = backend
+        # The built-in temperatures belong to 11B BF16 only. When the
+        # backend exposes its GGUF path, choose a matching sidecar automatically
+        # or disable calibration for an uncalibrated quantization/model size.
+        # Lightweight test/custom backends without a model_path preserve the
+        # historical constructor behaviour.
+        backend_model_path = getattr(getattr(backend, "config", None), "model_path", None)
+        if calibration and calibration_path is None and backend_model_path:
+            selection = resolve_auto_calibration(backend_model_path)
+            calibration = selection.enabled
+            calibration_path = selection.path
         self.calibration_enabled = calibration
         self.temperatures = load_temperatures(calibration_path) if calibration else {
             "choice": 1.0, "binary": 1.0, "score": 1.0, "labels": 1.0

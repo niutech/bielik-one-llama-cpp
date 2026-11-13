@@ -2,7 +2,9 @@
 
 Silnik decyzji dla **`speakleash/Bielik-One-11B-v3.1-r1`** z backendem **`llama-cpp-python`** zamiast vLLM. Projekt udostępnia zgodny kształt żądania `POST /v1/systemone` i cztery typy odpowiedzi: `choice`, `noul`, `score`, `labels`.
 
-> **Status implementacji:** repozytorium zawiera kompletną warstwę serwera, walidację, readout logitów, obliczanie rozkładów, temperatury kalibracyjne, CLI i testy jednostkowe bez GPU.
+**Status implementacji:** repozytorium zawiera kompletną warstwę serwera, walidację, readout logitów, obliczanie rozkładów, temperatury kalibracyjne, CLI i testy jednostkowe bez GPU.
+
+Obsługa modeli 4B/11B i profili kwantyzacji GGUF oraz automatyczny dobór kalibracji: zobacz [KWANTYZACJA](KWANTYZACJA.md).
 
 ## Co robi silnik
 
@@ -65,6 +67,8 @@ bielik-one-llama-cpp serve ./Bielik-One-11B-v3.1-r1-BF16.gguf \
 ```
 
 `--n-gpu-layers -1` próbuje umieścić wszystkie warstwy na GPU. Dla CPU ustaw `--n-gpu-layers 0`; dla częściowego offloadu podaj odpowiednią liczbę. Można też ograniczyć `--n-ctx`, `--n-batch` i `--n-ubatch`, aby dopasować pamięć do sprzętu.
+
+Pole `hf_token_id_range_matches` w wyniku `check` porównuje słownik z układem modelu 11B (651 tokenów od ID 32000). Wartość `false` jest oczekiwana dla modelu 4B i nie oznacza błędu; wynik `status: "ok"` potwierdza poprawność tokenizacji markerów. Sam test słownika nie potwierdza zgodności promptu ani jakości decyzji.
 
 Następnie sprawdź:
 

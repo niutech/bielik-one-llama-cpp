@@ -21,7 +21,9 @@ def load_temperatures(path: str | None = None) -> dict[str, float]:
         return dict(DEFAULT_TEMPERATURES)
     raw: dict[str, Any] = json.loads(Path(path).read_text(encoding="utf-8"))
     temperatures = raw.get("temperatures", raw)
-    result = dict(DEFAULT_TEMPERATURES)
+    # An explicit file is a model-specific profile. Missing types must stay
+    # uncalibrated (T=1), never inherit official 11B BF16 values.
+    result = {key: 1.0 for key in DEFAULT_TEMPERATURES}
     for key in result:
         if key in temperatures:
             value = float(temperatures[key])
