@@ -13,7 +13,7 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     serve = subparsers.add_parser("serve", help="load a GGUF model and start the HTTP API")
-    serve.add_argument("model", help="path to Bielik-One-11B-v3.1-r1 GGUF")
+    serve.add_argument("model", help="path to a merged Bielik-One GGUF")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=DEFAULT_PORT)
     serve.add_argument("--n-ctx", type=int, default=32768)
@@ -74,6 +74,10 @@ def main() -> None:
         print(json.dumps({
             "status": "ok",
             "decision_tokens": len(backend.decision_token_ids),
+            "token_ids_consecutive": list(backend.decision_token_ids) == list(range(
+                backend.decision_token_ids[0],
+                backend.decision_token_ids[0] + len(backend.decision_token_ids),
+            )),
             "hf_token_id_range_matches": backend.decision_token_id_range_matches_hf,
             "first_token_id": backend.decision_token_ids[0],
             "last_token_id": backend.decision_token_ids[-1],

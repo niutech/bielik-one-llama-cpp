@@ -5,7 +5,7 @@ import itertools
 import math
 import random
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
 import numpy as np
@@ -55,6 +55,12 @@ class DecisionEngine:
             "choice": 1.0, "binary": 1.0, "score": 1.0, "labels": 1.0
         }
         self.limits = limits or DecisionOptions()
+        decision_token_ids = getattr(backend, "decision_token_ids", None)
+        if decision_token_ids is not None:
+            self.limits = replace(
+                self.limits,
+                max_options=min(self.limits.max_options, len(decision_token_ids)),
+            )
 
     def _temperature(self, question_type: str, override: Any) -> float:
         key = "binary" if question_type == "noul" else question_type

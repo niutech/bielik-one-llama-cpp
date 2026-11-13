@@ -55,3 +55,17 @@ def test_api_rejects_invalid_request_level_options():
         })
     assert response.status_code == 422
     assert response.json()["code"] == "INVALID_REQUEST"
+
+
+def test_api_rejects_options_exceeding_model_capacity():
+    backend = FakeBackend()
+    backend.decision_token_ids = tuple(range(248320, 248836))
+    app = create_app(DecisionEngine(backend, calibration=False))
+    with TestClient(app) as client:
+        response = client.post("/v1/systemone", json={
+            "state": "x",
+            "questions": {"q": {"type": "choice", "criteria": {str(i): str(i) for i in range(517)}}},
+        })
+    assert response.status_code == 422
+    assert response.json()["code"] == "INVALID_REQUEST"
+    assert "516 options" in response.json()["error"]

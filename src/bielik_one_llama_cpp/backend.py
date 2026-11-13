@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import threading
 from typing import Sequence
 
@@ -54,22 +55,43 @@ class LlamaCppBackend:
         self._cached_prefix_tokens: tuple[int, ...] | None = None
 
     def _resolve_decision_tokens(self) -> tuple[int, ...]:
+        # Discover the vocabulary rather than assuming the 11B checkpoint's
+        # 651 tokens at id 32000. The 4B checkpoint uses 516 at id 248320.
+        tokens: dict[int, int] = {}
+        for token_id in range(self.llm.n_vocab()):
+            piece = self.llm.detokenize([token_id], special=True)
+            match = re.fullmatch(rb"<\|systemone_decision_(\d{4})\|>", piece)
+            if match is None:
+                continue
+            index = int(match.group(1))
+            if index in tokens:
+                raise BackendError("Decision-token vocabulary is not one-to-one in this GGUF file")
+            tokens[index] = token_id
+
+        if len(tokens) < 2:
+            raise BackendError(
+                "GGUF must expose at least two native decision tokens starting at "
+                "'<|systemone_decision_0000|>'. Use a GGUF converted from the exact "
+                "merged HF repository, including its added tokens."
+            )
+
         ids: list[int] = []
-        for index in range(DECISION_TOKEN_COUNT):
+        for index in range(max(tokens) + 1):
             marker = f"<|systemone_decision_{index:04d}|>".encode("utf-8")
+            if index not in tokens:
+                raise BackendError(f"GGUF decision-token vocabulary has a gap at {marker.decode()!r}")
             encoded = self.llm.tokenize(marker, add_bos=False, special=True)
-            if len(encoded) != 1:
+            if encoded != [tokens[index]]:
                 raise BackendError(
                     f"GGUF tokenizer does not expose native decision token {marker.decode()!r} as one token. "
                     "Use a GGUF converted from the exact merged HF repository, including its added tokens."
                 )
             ids.append(int(encoded[0]))
 
-        if len(set(ids)) != DECISION_TOKEN_COUNT:
+        if len(set(ids)) != len(ids):
             raise BackendError("Decision-token vocabulary is not one-to-one in this GGUF file")
         expected = list(range(DECISION_TOKEN_BASE_ID, DECISION_TOKEN_BASE_ID + DECISION_TOKEN_COUNT))
-        # The ids are expected to be consecutive in the original HF checkpoint. A
-        # different GGUF tokenizer layout may be valid, so only report the delta.
+        # Retain the legacy 11B diagnostic; other models can have valid layouts.
         self.decision_token_id_range_matches_hf = ids == expected
         return tuple(ids)
 

@@ -31,6 +31,40 @@ def test_choice_probabilities_and_answer():
     assert result["confidence"] > 0.0
 
 
+@pytest.mark.parametrize("question_type", ["choice", "score", "labels"])
+@pytest.mark.parametrize("configured_max", [None, 2, 1000])
+def test_model_capacity_limits_options_before_inference(question_type, configured_max):
+    backend = FakeBackend()
+    backend.decision_token_ids = tuple(range(248320, 248836))
+    limits = DecisionOptions(max_options=configured_max) if configured_max is not None else None
+    engine = DecisionEngine(backend, calibration=False, limits=limits)
+    maximum = min(configured_max or 651, 516)
+    assert engine.limits.max_options == maximum
+    if limits is not None:
+        assert limits.max_options == configured_max  # Do not mutate caller-owned limits.
+    criteria = {str(i): f"Option {i}" for i in range(maximum + 1)}
+    if question_type == "score":
+        criteria = list(criteria.values())
+    with pytest.raises(InvalidDecisionRequest, match=f"between .* and {maximum} options"):
+        engine.decide({
+            "state": "x",
+            "questions": {"q": {"type": question_type, "criteria": criteria}},
+        })
+    assert backend.calls == []
+
+
+def test_model_capacity_accepts_last_available_option():
+    backend = FakeBackend(np.zeros(516))
+    backend.decision_token_ids = tuple(range(248320, 248836))
+    engine = DecisionEngine(backend, calibration=False)
+    result = engine.decide({
+        "state": "x",
+        "questions": {"q": {"type": "choice", "criteria": {str(i): str(i) for i in range(516)}}},
+    })
+    assert len(result["answers"]["q"]["probabilities"]) == 516
+    assert backend.calls[0][1][-1] == 515
+
+
 def test_noul_probability_order():
     backend = FakeBackend([2.0, -1.0])
     engine = DecisionEngine(backend, calibration=False)

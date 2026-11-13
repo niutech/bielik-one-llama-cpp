@@ -7,7 +7,7 @@ from pathlib import Path
 DEFAULT_MODEL_ID = "speakleash/Bielik-One-11B-v3.1-r1"
 DEFAULT_PORT = 8026
 DEFAULT_CONTEXT = 32768
-DECISION_TOKEN_COUNT = 651
+DECISION_TOKEN_COUNT = 651  # Default request limit and legacy 11B vocabulary size.
 DECISION_TOKEN_BASE_ID = 32000  # HF config vocab_size=32651; standard tokenizer base=32000.
 
 
